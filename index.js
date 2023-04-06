@@ -13,6 +13,7 @@ const textGeneration = async (prompt) => {
 
     try {
         const response = await openai.createCompletion({
+            
             model: 'text-davinci-003',
             prompt: `Pretend you are Andy, a customer service employee at PIAA Cyprus.
             PIAA Cyprus offers two options for aftermarket car bulbs, our LED "Ultra" option and our Halogen "Hyper Arros" option. This is the PIAA Cyprus website: https://piaacyprus.com/
@@ -29,6 +30,9 @@ const textGeneration = async (prompt) => {
             presence_penalty: 0.6,
             stop: ['Human:', 'AI:'],
         });
+        
+        console.log('API Response:', response); // Add this line
+
     
         return {
             status: 1,
@@ -45,7 +49,8 @@ const textGeneration = async (prompt) => {
 
 const webApp = express();
 
-const PORT = process.env.PORT;
+const PORT = process.env.PORT || 8080;
+//const PORT = process.env.PORT;
 
 webApp.use(express.urlencoded({ extended: true }));
 webApp.use(express.json());
@@ -60,36 +65,29 @@ webApp.get('/', (req, res) => {
 });
 
 
-webApp.post('/dialogflow', async (req, res) => {
-    
-    let action = req.body.queryResult.action;
-    let queryText = req.body.queryResult.queryText;
-
-    if (action === 'input.unknown') {
+    const webhook = async (req, res) => {
+      let action = req.body.queryResult.action;
+      let queryText = req.body.queryResult.queryText;
+  
+      if (action === 'input.unknown') {
         let result = await textGeneration(queryText);
         if (result.status == 1) {
-            res.send(
-                {
-                    fulfillmentText: result.response
-                }
-            );
+          res.send({
+            fulfillmentText: result.response,
+          });
         } else {
-            res.send(
-                {
-                    fulfillmentText: `Sorry, I'm not able to help with that.`
-                }
-            );
+          res.send({
+            fulfillmentText: `Sorry, I'm not able to help with that.`,
+          });
         }
-    } else {
-        res.send(
-            {
-                fulfillmentText: `No handler for the action ${action}.`
-            }
-        );
-    }
-});
-
-
-webApp.listen(PORT, () => {
-    console.log(`Server is up and running at ${PORT}`);
-});
+      } else {
+        res.send({
+          fulfillmentText: `No handler for the action ${action}.`,
+        });
+      }
+    };
+  
+    webApp.post('/webhook', webhook);
+  
+    // Export the webhook function
+    exports.webhook = webhook;
